@@ -22,9 +22,9 @@ export default function NewLoanPage() {
     title: '',
     totalAmount: 0,
     emiAmount: 0,
-    emiDate: 1,
+    emiDate: 0,
     startDate: new Date().toISOString().split('T')[0],
-    tenure: 12,
+    tenure: 0,
     notes: '',
   });
 
@@ -35,6 +35,14 @@ export default function NewLoanPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!form.emiDate || form.emiDate < 1 || form.emiDate > 31) {
+      toast.error('EMI day must be between 1 and 31');
+      return;
+    }
+    if (!form.tenure || form.tenure < 1) {
+      toast.error('Tenure must be at least 1 month');
+      return;
+    }
     if (form.emiAmount * form.tenure < form.totalAmount * 0.5) {
       toast.error('EMI amount seems too low for the total amount and tenure');
       return;
@@ -109,33 +117,33 @@ export default function NewLoanPage() {
                 min={1}
               />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <Input
+              id="startDate"
+              type="date"
+              label="Start Date"
+              value={form.startDate}
+              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+              required
+            />
+            <div className="grid grid-cols-2 gap-3">
               <Input
                 id="emiDate"
                 type="number"
-                label="EMI Day"
+                label="EMI Day (1-31)"
                 placeholder="5"
-                value={form.emiDate}
-                onChange={(e) => setForm({ ...form, emiDate: parseInt(e.target.value) || 1 })}
+                value={form.emiDate || ''}
+                onChange={(e) => setForm({ ...form, emiDate: parseInt(e.target.value) || 0 })}
                 required
                 min={1}
                 max={31}
-              />
-              <Input
-                id="startDate"
-                type="date"
-                label="Start Date"
-                value={form.startDate}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                required
               />
               <Input
                 id="tenure"
                 type="number"
                 label="Tenure (months)"
                 placeholder="12"
-                value={form.tenure}
-                onChange={(e) => setForm({ ...form, tenure: parseInt(e.target.value) || 1 })}
+                value={form.tenure || ''}
+                onChange={(e) => setForm({ ...form, tenure: parseInt(e.target.value) || 0 })}
                 required
                 min={1}
                 max={360}

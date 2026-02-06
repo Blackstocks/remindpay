@@ -1,0 +1,105 @@
+// Prisma Schema for Reminder + Loan Management App
+// Supports both SQLite (dev) and PostgreSQL (production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USER ────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reminders          Reminder[]
+  loans              Loan[]
+  pushSubscriptions  PushSubscription[]
+}
+
+// ─── REMINDER ────────────────────────────────────────────────
+model Reminder {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  dateTime    DateTime
+  category    String         @default("Personal") // Work, Meeting, Personal, Loan, Other
+  priority    String         @default("Medium")   // Low, Medium, High
+  status      String         @default("Pending")  // Pending, Completed, Missed
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional link to a loan EMI
+  loanId String?
+  loan   Loan?   @relation(fields: [loanId], references: [id], onDelete: SetNull)
+}
+
+// ─── LOAN ────────────────────────────────────────────────────
+model Loan {
+  id            String   @id @default(cuid())
+  platform      String                          // Bank name, App name, Person name
+  title         String
+  totalAmount   Float
+  emiAmount     Float
+  emiDate       Int                             // Day of month (1-31) when EMI is due
+  startDate     DateTime
+  tenure        Int                             // Total months
+  status        String   @default("Active")     // Active, Completed, Overdue
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  emiPayments EMIPayment[]
+  reminders   Reminder[]
+}
+
+// ─── EMI PAYMENT ─────────────────────────────────────────────
+model EMIPayment {
+  id        String   @id @default(cuid())
+  amount    Float
+  dueDate   DateTime
+  paidDate  DateTime?
+  status    String   @default("Pending") // Pending, Paid, Overdue
+  month     Int                          // Which month number (1-based)
+  createdAt DateTime @default(now())
+
+  loanId String
+  loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
+}
+
+// ─── PUSH SUBSCRIPTION ──────────────────────────────────────
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── NOTIFICATION LOG ────────────────────────────────────────
+model NotificationLog {
+  id          String   @id @default(cuid())
+  type        String               // email, push
+  recipient   String
+  subject     String
+  status      String   @default("sent") // sent, failed
+  relatedId   String?              // reminder or loan id
+  relatedType String?              // reminder, loan, emi
+  sentAt      DateTime @default(now())
+}

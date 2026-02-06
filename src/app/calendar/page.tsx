@@ -11,16 +11,21 @@ import { formatDateTime, formatCurrency, formatDate, cn } from '@/lib/utils';
 
 interface CalendarEvent {
   id: string;
-  type: 'reminder' | 'emi';
+  type: 'reminder' | 'emi' | 'google';
   title: string;
   description?: string | null;
   date: string;
+  endDate?: string;
   status: string;
   category?: string;
   priority?: string;
   amount?: number;
   platform?: string;
   paidDate?: string | null;
+  meetLink?: string | null;
+  location?: string | null;
+  organizer?: string | null;
+  htmlLink?: string | null;
 }
 
 export default function CalendarPage() {
@@ -114,6 +119,7 @@ export default function CalendarPage() {
   // Month summary
   const monthReminders = events.filter((e) => e.type === 'reminder').length;
   const monthEmis = events.filter((e) => e.type === 'emi').length;
+  const monthGoogle = events.filter((e) => e.type === 'google').length;
   const monthEmiAmount = events
     .filter((e) => e.type === 'emi' && e.status !== 'Paid')
     .reduce((s, e) => s + (e.amount || 0), 0);
@@ -136,6 +142,12 @@ export default function CalendarPage() {
               <div className="w-2 h-2 rounded-full bg-red-500" />
               <span className="text-xs font-medium text-red-700">{monthEmis} EMI{monthEmis !== 1 ? 's' : ''}</span>
             </div>
+            {monthGoogle > 0 && (
+              <div className="flex items-center gap-1.5 bg-blue-50 rounded-lg px-3 py-1.5 flex-shrink-0">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="text-xs font-medium text-blue-700">{monthGoogle} Google</span>
+              </div>
+            )}
             {monthEmiAmount > 0 && (
               <div className="flex items-center bg-zinc-50 rounded-lg px-3 py-1.5 flex-shrink-0">
                 <span className="text-xs font-medium text-zinc-600">Due: {formatCurrency(monthEmiAmount)}</span>
@@ -178,12 +190,16 @@ export default function CalendarPage() {
               const dayEvents = eventsByDate[dateStr] || [];
               const reminders = dayEvents.filter((e) => e.type === 'reminder');
               const emis = dayEvents.filter((e) => e.type === 'emi');
+              const googleEvts = dayEvents.filter((e) => e.type === 'google');
               const hasReminders = reminders.length > 0;
               const hasEmis = emis.length > 0;
+              const hasGoogle = googleEvts.length > 0;
               const hasEvents = dayEvents.length > 0;
               const isToday = dateStr === todayStr;
               const hasOverdue = dayEvents.some((e) => e.status === 'Overdue' || e.status === 'Missed');
-              const allDone = hasEvents && dayEvents.every((e) => e.status === 'Paid' || e.status === 'Completed');
+              const nonGoogleEvents = dayEvents.filter((e) => e.type !== 'google');
+              const allDone = nonGoogleEvents.length > 0 && nonGoogleEvents.every((e) => e.status === 'Paid' || e.status === 'Completed');
+              const onlyGoogle = hasGoogle && !hasReminders && !hasEmis;
 
               // Cell background color
               let cellBg = '';
@@ -191,18 +207,24 @@ export default function CalendarPage() {
               let cellBorder = 'border border-transparent';
 
               if (hasEvents) {
-                if (allDone) {
+                if (allDone && !hasGoogle) {
                   cellBg = 'bg-zinc-100';
                   cellText = 'text-zinc-400';
                 } else if (hasOverdue) {
                   cellBg = 'bg-red-50';
                   cellText = 'text-red-700';
                   cellBorder = 'border border-red-200';
+                } else if (onlyGoogle) {
+                  cellBg = 'bg-blue-500';
+                  cellText = 'text-white';
                 } else if (hasEmis && hasReminders) {
                   cellBg = 'bg-zinc-900';
                   cellText = 'text-white';
                 } else if (hasEmis) {
                   cellBg = 'bg-red-500';
+                  cellText = 'text-white';
+                } else if (hasReminders && hasGoogle) {
+                  cellBg = 'bg-zinc-900';
                   cellText = 'text-white';
                 } else {
                   cellBg = 'bg-zinc-800';
@@ -233,16 +255,17 @@ export default function CalendarPage() {
                   {hasEvents && (
                     <span className={cn(
                       'text-[8px] leading-none mt-0.5 font-medium',
-                      allDone ? 'text-zinc-400' :
-                      (cellBg.includes('900') || cellBg.includes('red-500')) ? 'text-white/70' :
+                      allDone && !hasGoogle ? 'text-zinc-400' :
+                      (cellBg.includes('900') || cellBg.includes('500')) ? 'text-white/70' :
                       hasOverdue ? 'text-red-500' : 'text-zinc-500'
                     )}>
-                      {emis.length > 0 && reminders.length > 0
-                        ? `${emis.length}E·${reminders.length}R`
-                        : emis.length > 0
-                          ? `${emis.length} EMI`
-                          : `${reminders.length}R`
-                      }
+                      {(() => {
+                        const parts: string[] = [];
+                        if (emis.length > 0) parts.push(`${emis.length}E`);
+                        if (reminders.length > 0) parts.push(`${reminders.length}R`);
+                        if (googleEvts.length > 0) parts.push(`${googleEvts.length}G`);
+                        return parts.join('·');
+                      })()}
                     </span>
                   )}
                 </button>
@@ -251,7 +274,7 @@ export default function CalendarPage() {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-3 mt-3 pt-2 border-t border-zinc-100">
+          <div className="flex items-center justify-center gap-3 mt-3 pt-2 border-t border-zinc-100 flex-wrap">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded bg-zinc-800" />
               <span className="text-[10px] text-zinc-400">Reminder</span>
@@ -259,6 +282,10 @@ export default function CalendarPage() {
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded bg-red-500" />
               <span className="text-[10px] text-zinc-400">EMI</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded bg-blue-500" />
+              <span className="text-[10px] text-zinc-400">Google</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded bg-red-50 border border-red-200" />
@@ -296,6 +323,10 @@ export default function CalendarPage() {
             {/* Then reminders */}
             {selectedEvents.filter((e) => e.type === 'reminder').map((event) => (
               <ReminderEventDetail key={event.id} event={event} />
+            ))}
+            {/* Then Google events */}
+            {selectedEvents.filter((e) => e.type === 'google').map((event) => (
+              <GoogleEventDetail key={event.id} event={event} />
             ))}
           </div>
         )}
@@ -413,6 +444,75 @@ function ReminderEventDetail({ event }: { event: CalendarEvent }) {
       {event.description && (
         <p className="text-xs text-zinc-500 mt-1.5 pl-9">{event.description}</p>
       )}
+    </div>
+  );
+}
+
+function GoogleEventDetail({ event }: { event: CalendarEvent }) {
+  const startTime = formatDateTime(event.date);
+  const endTime = event.endDate ? formatDateTime(event.endDate) : null;
+
+  return (
+    <div className="rounded-xl p-3 border bg-blue-50 border-blue-200">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-blue-500 text-white">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-zinc-900 truncate">{event.title}</p>
+            {event.organizer && (
+              <p className="text-[11px] text-zinc-400">by {event.organizer}</p>
+            )}
+          </div>
+        </div>
+        <Badge variant="default">Google</Badge>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-[11px] pl-9">
+        <div>
+          <span className="text-zinc-400">Time</span>
+          <p className="font-medium text-zinc-700">{startTime}{endTime ? ` – ${endTime}` : ''}</p>
+        </div>
+        {event.location && (
+          <div>
+            <span className="text-zinc-400">Location</span>
+            <p className="font-medium text-zinc-700">{event.location}</p>
+          </div>
+        )}
+      </div>
+
+      {event.description && (
+        <p className="text-xs text-zinc-500 mt-2 pl-9 line-clamp-3">{event.description}</p>
+      )}
+
+      <div className="flex gap-2 mt-2 pl-9">
+        {event.meetLink && (
+          <a
+            href={event.meetLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-100 rounded-lg px-2.5 py-1"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Join Meet
+          </a>
+        )}
+        {event.htmlLink && (
+          <a
+            href={event.htmlLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 hover:text-zinc-800 bg-zinc-100 rounded-lg px-2.5 py-1"
+          >
+            Open in Google Calendar
+          </a>
+        )}
+      </div>
     </div>
   );
 }

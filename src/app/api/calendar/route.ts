@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const fromDate = new Date(from);
   const toDate = new Date(to);
 
-  const [reminders, emiPayments] = await Promise.all([
+  const [reminders, emiPayments, googleEvents] = await Promise.all([
     prisma.reminder.findMany({
       where: {
         userId,
@@ -37,6 +37,13 @@ export async function GET(request: Request) {
         loan: { select: { title: true, platform: true, emiAmount: true } },
       },
       orderBy: { dueDate: 'asc' },
+    }),
+    prisma.googleCalendarEvent.findMany({
+      where: {
+        googleAccount: { userId },
+        startTime: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { startTime: 'asc' },
     }),
   ]);
 
@@ -62,6 +69,19 @@ export async function GET(request: Request) {
       amount: e.amount,
       platform: e.loan.platform,
       paidDate: e.paidDate,
+    })),
+    ...googleEvents.map((g) => ({
+      id: g.id,
+      type: 'google' as const,
+      title: g.title,
+      description: g.description,
+      date: g.startTime,
+      endDate: g.endTime,
+      status: g.status,
+      meetLink: g.meetLink,
+      location: g.location,
+      organizer: g.organizer,
+      htmlLink: g.htmlLink,
     })),
   ];
 

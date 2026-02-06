@@ -22,6 +22,7 @@ model User {
   reminders          Reminder[]
   loans              Loan[]
   pushSubscriptions  PushSubscription[]
+  googleAccounts     GoogleAccount[]
 }
 
 // ─── REMINDER ────────────────────────────────────────────────
@@ -90,6 +91,47 @@ model PushSubscription {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── GOOGLE ACCOUNT ────────────────────────────────────────
+model GoogleAccount {
+  id           String   @id @default(cuid())
+  email        String
+  accessToken  String
+  refreshToken String
+  tokenExpiry  DateTime
+  lastSyncAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  events GoogleCalendarEvent[]
+
+  @@unique([userId, email])
+}
+
+// ─── GOOGLE CALENDAR EVENT ─────────────────────────────────
+model GoogleCalendarEvent {
+  id              String   @id @default(cuid())
+  googleEventId   String
+  title           String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  location        String?
+  meetLink        String?
+  organizer       String?
+  htmlLink        String?
+  status          String   @default("confirmed")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  googleAccountId String
+  googleAccount   GoogleAccount @relation(fields: [googleAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([googleAccountId, googleEventId])
 }
 
 // ─── NOTIFICATION LOG ────────────────────────────────────────

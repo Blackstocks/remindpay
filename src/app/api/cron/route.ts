@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { sendEmail, reminderEmailTemplate, emiReminderEmailTemplate } from '@/lib/email';
 import { sendPushNotification, EMI_REMINDER_INTERVALS } from '@/lib/notifications';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { syncAllAccounts } from '@/lib/google';
 
 // This cron endpoint runs periodically (e.g., every hour via Vercel Cron)
 // It handles:
@@ -216,6 +217,9 @@ export async function GET(request: Request) {
       }
     }
 
+    // ─── 4. Sync Google Calendar Events ──────────────────────────
+    const googleSync = await syncAllAccounts();
+
     return NextResponse.json({
       success: true,
       summary: {
@@ -223,6 +227,8 @@ export async function GET(request: Request) {
         pushSent,
         remindersMissed: remindersUpdated,
         loansProcessed: activeLoans.length,
+        googleAccountsSynced: googleSync.synced,
+        googleSyncFailed: googleSync.failed,
       },
     });
   } catch (error) {

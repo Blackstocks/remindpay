@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import Card from '@/components/ui/Card';
 import NotificationSetup from '@/components/ui/NotificationSetup';
+import GoogleAccountsSection from '@/components/ui/GoogleAccountsSection';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function SettingsPage() {
@@ -43,6 +44,14 @@ export default function SettingsPage() {
             Enable push notifications to receive reminders and EMI alerts
           </p>
           <NotificationSetup />
+        </Card>
+
+        <Card>
+          <h2 className="font-semibold text-zinc-900 mb-1">Google Calendar</h2>
+          <p className="text-sm text-zinc-500 mb-3">
+            Connect your Google accounts to see calendar events and Google Meet meetings
+          </p>
+          <GoogleAccountsSection />
         </Card>
 
         <Card>

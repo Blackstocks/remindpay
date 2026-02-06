@@ -100,6 +100,28 @@ export interface DashboardData {
   };
 }
 
+// ─── Google Account Types ───────────────────────────────────
+export interface GoogleAccount {
+  id: string;
+  email: string;
+  lastSyncAt: string | null;
+  createdAt: string;
+}
+
+export interface GoogleCalendarEventData {
+  id: string;
+  type: 'google';
+  title: string;
+  description?: string | null;
+  date: string;
+  endDate: string;
+  status: string;
+  meetLink?: string | null;
+  location?: string | null;
+  organizer?: string | null;
+  htmlLink?: string | null;
+}
+
 // ─── API Response Types ──────────────────────────────────────
 export interface ApiResponse<T = unknown> {
   success: boolean;

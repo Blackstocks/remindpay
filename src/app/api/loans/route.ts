@@ -101,11 +101,18 @@ export async function POST(request: Request) {
       });
 
       // Generate EMI payment schedule
+      // First EMI is the month AFTER the start date (disbursement month)
       const emiPayments = [];
+      const startYear = startDate.getFullYear();
+      const startMonth = startDate.getMonth(); // 0-indexed
+
       for (let i = 0; i < data.tenure; i++) {
-        const dueDate = new Date(startDate);
-        dueDate.setMonth(dueDate.getMonth() + i);
-        dueDate.setDate(Math.min(data.emiDate, getDaysInMonth(dueDate)));
+        const emiMonth = startMonth + 1 + i; // +1 because first EMI is next month
+        const year = startYear + Math.floor(emiMonth / 12);
+        const month = emiMonth % 12;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const day = Math.min(data.emiDate, daysInMonth);
+        const dueDate = new Date(year, month, day);
 
         emiPayments.push({
           amount: data.emiAmount,
@@ -134,7 +141,3 @@ export async function POST(request: Request) {
   }
 }
 
-// Helper: get days in a given month
-function getDaysInMonth(date: Date): number {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-}

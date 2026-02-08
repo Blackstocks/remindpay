@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         startTime: { gte: fromDate, lte: toDate },
       },
       orderBy: { startTime: 'asc' },
-    }),
+    }).catch(() => [] as any[]),
   ]);
 
   // Normalize into unified calendar events
